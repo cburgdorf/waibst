@@ -1,0 +1,1102 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dachgeschoss 3D</title>
+<meta name="description" content="3D-Planung zum Durchgehen: Wohnküche, Bad und Schlafzimmer nach der Renovierung, in Varianten.">
+<!-- Link-Vorschau (Signal, WhatsApp, Messenger, Slack …) -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Dachgeschoss · Renovierung in 3D">
+<meta property="og:description" content="Wohnküche, Bad und Schlafzimmer in Varianten – zum Durchgehen im Browser.">
+<meta property="og:url" content="https://cburgdorf.github.io/waibst/">
+<meta property="og:image" content="https://cburgdorf.github.io/waibst/vorschau.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="3D-Ansicht der renovierten Dachgeschosswohnung von oben">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #dfe6ec; font: 14px sans-serif; }
+  #panel { position: absolute; top: 12px; left: 12px; background: rgba(255,255,255,.92); padding: 12px 14px;
+           border-radius: 8px; width: 340px; max-width: calc(100vw - 52px); box-sizing: border-box; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+  #panel.zu { width: auto; }
+  #panel h1 { font-size: 16px; margin: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  #panel-inhalt { margin-top: 8px; }
+  #panel.zu #panel-inhalt { display: none; }
+  #panel #umschalten { font: 13px sans-serif; padding: 3px 8px; }
+  #panel .rund { font: bold 13px sans-serif; }
+  @media (max-width: 700px) { #panel { max-width: calc(100vw - 52px); } }
+  #panel button { cursor: pointer; font: inherit; }
+  #panel .kopfknoepfe { display: flex; gap: 4px; }
+  #panel .rund { width: 26px; height: 26px; border-radius: 50%; border: 1px solid #bbb; background: #f6f6f6; padding: 0; font-weight: bold; }
+  #panel .rund.aktiv { background: #2f6f8f; color: #fff; border-color: #2f6f8f; }
+  #panel.zu .rund { display: none; }
+  .zeile { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+  .zeile > .titel { width: 82px; flex: none; color: #444; font-size: 13px; }
+  .seg { display: inline-flex; border: 1px solid #bbb; border-radius: 6px; overflow: hidden; }
+  .seg button { border: 0; background: #f6f6f6; padding: 5px 10px; }
+  .seg button + button { border-left: 1px solid #bbb; }
+  .seg button.aktiv { background: #2f6f8f; color: #fff; }
+  /* Blätter-Leiste je Raum: ‹ Name › ; Tippen auf den Namen öffnet die Liste (natives Auswahlfeld darüber) */
+  .blaettern { display: flex; align-items: stretch; flex: 1; min-width: 0; border: 1px solid #bbb; border-radius: 6px; overflow: hidden; background: #fff; }
+  .blaettern button { border: 0; background: #f6f6f6; padding: 0 9px; font-size: 16px; }
+  .blaettern .name { position: relative; flex: 1; min-width: 0; padding: 5px 6px; font-size: 13px;
+                     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 1px solid #ddd; border-right: 1px solid #ddd; }
+  .blaettern .name b { color: #2f6f8f; margin-right: 4px; }
+  .blaettern select { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; }
+  .zeile.aktiv .blaettern { border-color: #2f6f8f; box-shadow: 0 0 0 1px #2f6f8f; }
+  #panel .bereich { font-size: 12px; color: #555; line-height: 1.45; margin-top: 8px; padding-top: 8px; border-top: 1px solid #e3e3e3; }
+  #panel .bereich[hidden] { display: none; }
+  #panel .annahme { color: #b85a00; }
+  #panel kbd { font: 11px monospace; background: #eee; border: 1px solid #ccc; border-radius: 3px; padding: 0 3px; }
+  canvas { touch-action: none; }
+  #joystick { position: absolute; left: 24px; bottom: 24px; width: 120px; height: 120px; border-radius: 50%;
+              background: rgba(255,255,255,.35); border: 2px solid rgba(255,255,255,.8); display: none; touch-action: none; }
+  #joystick-knopf { position: absolute; left: 35px; top: 35px; width: 50px; height: 50px; border-radius: 50%;
+                    background: rgba(255,255,255,.9); box-shadow: 0 1px 4px rgba(0,0,0,.3); pointer-events: none; }
+  #fadenkreuz { position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px; border-radius: 50%;
+                background: rgba(0,0,0,.5); display: none; pointer-events: none; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="panel">
+  <h1>Dachgeschoss · 3D
+    <span class="kopfknoepfe">
+      <button class="rund" id="btn-hilfe" title="Bedienung" aria-expanded="false">?</button>
+      <button class="rund" id="btn-info" title="Annahmen und 2D-Pläne" aria-expanded="false">i</button>
+      <button id="umschalten" aria-expanded="true">Ausblenden</button>
+    </span>
+  </h1>
+  <div id="panel-inhalt">
+    <div class="zeile"><span class="titel">Plan</span>
+      <span class="seg" id="seg-plan">
+        <button data-wert="floor_plan_today.svg">Heute</button><button data-wert="floor_plan_future.svg">Renovierung</button>
+      </span>
+    </div>
+    <select id="plan" hidden>
+      <option value="floor_plan_today.svg">Heute</option>
+      <option value="floor_plan_future.svg" selected>Nach Renovierung</option>
+    </select>
+    <div class="zeile"><span class="titel">Ansicht</span>
+      <span class="seg"><button id="btn-uebersicht">Übersicht</button><button id="btn-gehen">Durchgehen</button></span>
+    </div>
+    <div id="varianten"></div>
+    <div class="zeile"><span class="titel"></span><label><input type="checkbox" id="decke"> Decke / Dach</label></div>
+    <div class="bereich" id="hilfe" hidden>
+      <b>Durchgehen:</b> ins Bild klicken, Maus = umschauen, <kbd>WASD</kbd>/Pfeiltasten = gehen, <kbd>Shift</kbd> = schneller, <kbd>Esc</kbd> = Maus frei.
+      Am Handy: Joystick links unten = gehen, übers Bild wischen = umschauen.<br>
+      <b>Übersicht:</b> ziehen = drehen, rechte Maustaste = verschieben, Mausrad = Zoom.<br>
+      <b>Varianten:</b> ‹ › blättern, auf den Namen tippen = Liste. In der Übersicht: <kbd>1</kbd>–<kbd>3</kbd> wählt den Raum, <kbd>←</kbd> <kbd>→</kbd> blättert.
+    </div>
+    <div class="bereich" id="info" hidden>
+      <div class="annahme" id="annahmen"></div>
+      <div style="margin-top:6px">2D-Plan: <a href="floor_plan_today.svg" target="_blank">Heute</a> · <a href="floor_plan_future.svg" target="_blank">Nach Renovierung</a></div>
+      <div style="margin-top:6px">Der Plan wird alle 2 s neu geladen, Änderungen an der SVG erscheinen automatisch.</div>
+    </div>
+  </div>
+</div>
+<div id="fadenkreuz"></div>
+<div id="joystick"><div id="joystick-knopf"></div></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+
+// Einheiten: cm. SVG-X -> x, SVG-Y -> z, Höhe -> y.
+const AUGENHOEHE = 165;
+const params = new URLSearchParams(location.search);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xdfe6ec);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xd8d0c4, 1.8));
+scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+const sonne = new THREE.DirectionalLight(0xffffff, 1.4);
+sonne.position.set(300, 900, 1400);
+scene.add(sonne);
+
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 1, 20000);
+const orbit = new OrbitControls(camera, renderer.domElement);
+const walk = new PointerLockControls(camera, renderer.domElement);
+
+const MAT = {
+  wand:     new THREE.MeshLambertMaterial({ color: 0xf2efe9 }),
+  leicht:   new THREE.MeshLambertMaterial({ color: 0xe6e2da }),
+  boden:    new THREE.MeshLambertMaterial({ color: 0xc8a978, side: THREE.DoubleSide }),
+  decke:    new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true, side: THREE.DoubleSide }),
+  glas:     new THREE.MeshLambertMaterial({ color: 0x9fc8e8, transparent: true, opacity: 0.35, side: THREE.DoubleSide }),
+  holz:     new THREE.MeshLambertMaterial({ color: 0x8b5a2b }),
+  treppe:   new THREE.MeshLambertMaterial({ color: 0x9a8a72 }),
+};
+
+// Echtholz-Eichendielen: prozedurale Textur, 8 Dielen breit, 400 cm lang
+function eichendielenTextur() {
+  const PX = 4, breite = 18, n = 8, laenge = 400;
+  const c = document.createElement('canvas');
+  c.width = n * breite * PX; c.height = laenge * PX;
+  const ctx = c.getContext('2d');
+  let seed = 7;
+  const zufall = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < n; i++) {
+    const x0 = i * breite * PX, w = breite * PX;
+    let y = -zufall() * 200 * PX;                 // versetzte Stöße
+    while (y < c.height) {
+      const l = (150 + zufall() * 100) * PX;
+      const hell = 0.85 + zufall() * 0.25;
+      ctx.fillStyle = `rgb(${190 * hell | 0},${145 * hell | 0},${95 * hell | 0})`;
+      ctx.fillRect(x0, y, w, l);
+      // Maserung
+      for (let k = 0; k < 14; k++) {
+        ctx.strokeStyle = `rgba(90,55,25,${0.08 + zufall() * 0.15})`;
+        ctx.lineWidth = 0.5 + zufall() * 1.5;
+        const gx = x0 + zufall() * w, amp = 1 + zufall() * 3;
+        ctx.beginPath();
+        for (let yy = y; yy < y + l; yy += 8) ctx.lineTo(gx + Math.sin(yy / (30 + k * 7)) * amp, yy);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(60,35,15,0.6)';     // Stoßfuge
+      ctx.fillRect(x0, y, w, 2);
+      y += l;
+    }
+    ctx.fillStyle = 'rgba(60,35,15,0.6)';       // Längsfuge
+    ctx.fillRect(x0, 0, 2, c.height);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return tex;
+}
+const BELAG = { 'eiche-dielen': { map: eichendielenTextur() } };
+
+// Rustikale Massivholzplatte (Wildeiche, durchgehende Lamellen mit Ästen), 64 cm breit x 200 cm lang.
+// laengsX: Lamellen laufen in x-Richtung (Platte an der Badwand), sonst in z-Richtung.
+function holzplattenTextur(laengsX) {
+  const PX = 4, B = 64, LAE = 200;
+  const c = document.createElement('canvas');
+  c.width = (laengsX ? LAE : B) * PX; c.height = (laengsX ? B : LAE) * PX;
+  const ctx = c.getContext('2d');
+  if (laengsX) { ctx.translate(c.width, 0); ctx.rotate(Math.PI / 2); }   // immer "Lamellen vertikal" zeichnen
+  let seed = 11;
+  const zufall = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const w = 8 * PX, h = LAE * PX;
+  for (let i = 0; i < B / 8; i++) {
+    const x0 = i * w, hell = 0.8 + zufall() * 0.35;
+    ctx.fillStyle = `rgb(${168 * hell | 0},${116 * hell | 0},${63 * hell | 0})`;
+    ctx.fillRect(x0, 0, w, h);
+    for (let k = 0; k < 10; k++) {                              // Maserung
+      ctx.strokeStyle = `rgba(70,40,15,${0.1 + zufall() * 0.2})`;
+      ctx.lineWidth = 0.6 + zufall() * 1.6;
+      const gx = x0 + zufall() * w, amp = 1 + zufall() * 4, per = 40 + zufall() * 80;
+      ctx.beginPath();
+      for (let y = 0; y < h; y += 6) ctx.lineTo(gx + Math.sin(y / per) * amp, y);
+      ctx.stroke();
+    }
+    for (let k = 0; k < 2; k++) if (zufall() < 0.3) {           // Äste
+      const ax = x0 + w * (0.25 + zufall() * 0.5), ay = zufall() * h, rx = 2 + zufall() * 3;
+      ctx.fillStyle = 'rgba(60,32,12,0.75)';
+      ctx.beginPath(); ctx.ellipse(ax, ay, rx, rx * 1.6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(60,32,12,0.35)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.ellipse(ax, ay, rx * 2, rx * 4, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(70,40,15,0.35)';                      // Lamellenfuge
+    ctx.fillRect(x0, 0, 1, h);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return { tex, sx: laengsX ? LAE : B, sz: laengsX ? B : LAE };
+}
+const HOLZPLATTE = { x: holzplattenTextur(true), z: holzplattenTextur(false) };
+
+// Großformatige Steinfliesen 60x60, warmgrau, leicht gewolkt; Textur = 2x2 Fliesen (120 cm)
+function steinfliesenTextur() {
+  const PX = 4, F = 60, c = document.createElement('canvas');
+  c.width = c.height = 2 * F * PX;
+  const ctx = c.getContext('2d');
+  let seed = 5;
+  const zufall = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) {
+    const hell = 0.94 + zufall() * 0.08;
+    ctx.fillStyle = `rgb(${217 * hell | 0},${212 * hell | 0},${203 * hell | 0})`;
+    ctx.fillRect(i * F * PX, j * F * PX, F * PX, F * PX);
+    for (let k = 0; k < 40; k++) {
+      ctx.fillStyle = `rgba(120,110,95,${zufall() * 0.06})`;
+      ctx.beginPath();
+      ctx.arc(i * F * PX + zufall() * F * PX, j * F * PX + zufall() * F * PX, 5 + zufall() * 30, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.fillStyle = '#a9a196';
+  for (let i = 0; i <= 2; i++) { ctx.fillRect(i * F * PX - 1, 0, 2, c.height); ctx.fillRect(0, i * F * PX - 1, c.width, 2); }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+BELAG['fliesen-stein'] = { map: steinfliesenTextur(), groesse: 120 };
+
+// Natursteinmauer: unregelmäßige Bruchsteine in unruhigen Lagen, mit Schattierung, Sprenkeln und
+// eingetieften Fugen. Liefert Farbtextur + Reliefkarte (bumpMap). Kachel = 100 x 100 cm, nahtlos.
+function natursteinTextur() {
+  const PX = 6, S = 100, N = S * PX;
+  const farbe = document.createElement('canvas'), relief = document.createElement('canvas');
+  farbe.width = farbe.height = relief.width = relief.height = N;
+  const f = farbe.getContext('2d'), h = relief.getContext('2d');
+  let seed = 23;
+  const zufall = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  // Fuge: heller Kalkmörtel mit Körnung
+  f.fillStyle = '#c9c1b2'; f.fillRect(0, 0, N, N);
+  for (let i = 0; i < 4000; i++) { f.fillStyle = `rgba(90,80,65,${zufall() * 0.15})`; f.fillRect(zufall() * N, zufall() * N, 2, 2); }
+  h.fillStyle = '#000'; h.fillRect(0, 0, N, N);
+  const toene = [[148, 138, 122], [124, 117, 106], [170, 153, 127], [108, 103, 96], [160, 133, 103], [138, 132, 124], [181, 170, 150], [118, 108, 92]];
+  // unregelmäßiger Stein als weiches Polygon, an Kachelrändern gespiegelt gezeichnet (nahtlos)
+  const stein = (cx, cy, rx, ry) => {
+    const n = 9 + Math.floor(zufall() * 4), pts = [];
+    for (let i = 0; i < n; i++) {
+      const w = (i / n) * Math.PI * 2 + (zufall() - .5) * 0.35, k = 0.9 + zufall() * 0.12;
+      const c = Math.cos(w), s_ = Math.sin(w);
+      const se = Math.pow(Math.pow(Math.abs(c), 4) + Math.pow(Math.abs(s_), 4), -0.25);   // Superellipse: eckiger
+      pts.push([c * se * rx * k, s_ * se * ry * k]);
+    }
+    const [r, g, b] = toene[Math.floor(zufall() * toene.length)], v = 0.85 + zufall() * 0.3;
+    const flecken = Array.from({ length: 25 }, () => [(zufall() - .5) * rx * 1.4, (zufall() - .5) * ry * 1.4, zufall()]);
+    for (const dx of [-N, 0, N]) for (const dy of [-N, 0, N]) {
+      const x0 = cx + dx, y0 = cy + dy;
+      if (x0 + rx < 0 || x0 - rx > N || y0 + ry < 0 || y0 - ry > N) continue;
+      const pfad = ctx => {
+        ctx.beginPath();
+        ctx.lineJoin = 'round';
+        pts.forEach(([px, py], i) => i === 0 ? ctx.moveTo(x0 + px, y0 + py) : ctx.lineTo(x0 + px, y0 + py));
+        ctx.closePath();
+      };
+      // Schatten der Fuge unter dem Stein
+      f.save(); f.translate(PX * 0.6, PX * 0.9); pfad(f); f.fillStyle = 'rgba(60,50,40,0.45)'; f.fill(); f.restore();
+      // Stein mit Wölbung (Licht von oben links)
+      pfad(f);
+      const gr = f.createRadialGradient(x0 - rx * .35, y0 - ry * .4, 1, x0, y0, Math.max(rx, ry) * 1.15);
+      gr.addColorStop(0, `rgb(${Math.min(255, r * v * 1.18) | 0},${Math.min(255, g * v * 1.18) | 0},${Math.min(255, b * v * 1.18) | 0})`);
+      gr.addColorStop(0.7, `rgb(${r * v | 0},${g * v | 0},${b * v | 0})`);
+      gr.addColorStop(1, `rgb(${r * v * .72 | 0},${g * v * .72 | 0},${b * v * .72 | 0})`);
+      f.fillStyle = gr; f.fill();
+      f.save(); pfad(f); f.clip();
+      for (const [fx, fy, a] of flecken) {                       // Sprenkel / Adern
+        f.fillStyle = a < .5 ? `rgba(40,35,30,${a * .25})` : `rgba(255,250,240,${(a - .5) * .25})`;
+        f.beginPath(); f.arc(x0 + fx, y0 + fy, 0.3 * PX + a * 0.8 * PX, 0, Math.PI * 2); f.fill();
+      }
+      f.restore();
+      pfad(f); f.strokeStyle = 'rgba(50,42,34,0.35)'; f.lineWidth = 1.2; f.stroke();
+      // Relief: Stein erhaben, zur Mitte hin höher
+      pfad(h);
+      const hr = h.createRadialGradient(x0 - rx * .2, y0 - ry * .2, 1, x0, y0, Math.max(rx, ry));
+      hr.addColorStop(0, '#fff'); hr.addColorStop(0.75, '#bbb'); hr.addColorStop(1, '#555');
+      h.fillStyle = hr; h.fill();
+    }
+  };
+  // Lagen mit wechselnder Höhe; Steine unterschiedlich breit, leicht versetzt
+  for (let y = 0; y < S; ) {
+    const lage = 10 + zufall() * 8;
+    for (let x = zufall() * 12; x < S + 0.01; ) {
+      const b = 12 + zufall() * 22, hh = lage * (0.9 + zufall() * 0.12);
+      stein((x + b / 2) * PX, (y + lage / 2 + (zufall() - .5)) * PX, (b / 2 - 0.6) * PX, (hh / 2 - 0.5) * PX);
+      if (zufall() < 0.25) stein((x + b + 1.5) * PX, (y + lage * (zufall() < .5 ? .15 : .85)) * PX, 2.2 * PX, 1.6 * PX); // Zwickelstein
+      x += b;
+    }
+    y += lage;
+  }
+  const mk = c => {
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    return t;
+  };
+  const map = mk(farbe); map.colorSpace = THREE.SRGBColorSpace;
+  return { map, bump: mk(relief) };
+}
+const NATURSTEIN = natursteinTextur();
+
+
+// UVs in Weltkoordinaten (cm / groesse), damit Texturen auf allen Seiten eines Quaders unverzerrt sind
+function weltUV(geo, mitte, groesse) {
+  const p = geo.attributes.position, n = geo.attributes.normal, uv = geo.attributes.uv;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i) + mitte.x, y = p.getY(i) + mitte.y, z = p.getZ(i) + mitte.z;
+    const ax = Math.abs(n.getX(i)), ay = Math.abs(n.getY(i));
+    if (ay > 0.5) uv.setXY(i, x / groesse, z / groesse);
+    else if (ax > 0.5) uv.setXY(i, z / groesse, y / groesse);
+    else uv.setXY(i, x / groesse, y / groesse);
+  }
+  uv.needsUpdate = true;
+}
+
+const canvasTextur = (c, farbig = true) => {
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  if (farbig) t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return t;
+};
+const zufallsquelle = start => { let seed = start; return () => (seed = (seed * 16807) % 2147483647) / 2147483647; };
+
+// Kalkputz: fast weiß, feine Körnung und leichte Wolken; Kachel 100 cm
+function putzTextur(r0, g0, b0) {
+  const N = 256, c = document.createElement('canvas'); c.width = c.height = N;
+  const ctx = c.getContext('2d'), zufall = zufallsquelle(31);
+  ctx.fillStyle = `rgb(${r0},${g0},${b0})`; ctx.fillRect(0, 0, N, N);
+  for (let i = 0; i < 40; i++) {
+    ctx.fillStyle = `rgba(${zufall() < .5 ? '255,255,255' : '150,140,125'},${zufall() * 0.018})`;
+    ctx.beginPath(); ctx.arc(zufall() * N, zufall() * N, 10 + zufall() * 40, 0, Math.PI * 2); ctx.fill();
+  }
+  for (let i = 0; i < 5000; i++) { ctx.fillStyle = `rgba(110,100,85,${zufall() * 0.07})`; ctx.fillRect(zufall() * N, zufall() * N, 1, 1); }
+  return canvasTextur(c);
+}
+MAT.wand = new THREE.MeshLambertMaterial({ map: putzTextur(242, 239, 233) });
+MAT.leicht = new THREE.MeshLambertMaterial({ map: putzTextur(234, 230, 222) });
+MAT.sockelleiste = new THREE.MeshLambertMaterial({ color: 0xf4f2ec });
+MAT.tuer = new THREE.MeshLambertMaterial({ color: 0xf3f1eb });
+MAT.rahmen = new THREE.MeshLambertMaterial({ color: 0xf6f6f3 });
+MAT.chrom = new THREE.MeshLambertMaterial({ color: 0xb9bdc1 });
+MAT.schalter = new THREE.MeshLambertMaterial({ color: 0xfbfbf9 });
+MAT.handlauf = new THREE.MeshLambertMaterial({ color: 0x5b4330 });
+
+// Altes Fachwerkholz: dunkle Eiche mit Längsmaserung und Trockenrissen; Maserung entlang v
+function balkenTextur() {
+  const W = 128, H = 512, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const ctx = c.getContext('2d'), zufall = zufallsquelle(77);
+  ctx.fillStyle = '#7a5130'; ctx.fillRect(0, 0, W, H);
+  for (let k = 0; k < 40; k++) {
+    ctx.strokeStyle = `rgba(${zufall() < .5 ? '45,28,14' : '150,105,65'},${0.1 + zufall() * 0.18})`;
+    ctx.lineWidth = 0.6 + zufall() * 1.4;
+    const x0 = zufall() * W, amp = 0.5 + zufall() * 2.5, per = 60 + zufall() * 140;
+    ctx.beginPath(); for (let y = 0; y <= H; y += 4) ctx.lineTo(x0 + Math.sin(y / per) * amp, y); ctx.stroke();
+  }
+  for (let k = 0; k < 3; k++) {                                     // Risse
+    ctx.strokeStyle = 'rgba(30,18,9,0.55)'; ctx.lineWidth = 1;
+    let x = zufall() * W, y = zufall() * H; const l = 60 + zufall() * 160;
+    ctx.beginPath(); ctx.moveTo(x, y); for (let i = 0; i < l; i += 6) { x += (zufall() - .5) * 1.5; ctx.lineTo(x, y + i); } ctx.stroke();
+  }
+  return canvasTextur(c);
+}
+const BALKEN = balkenTextur();
+MAT.holz = new THREE.MeshLambertMaterial({ map: BALKEN });                       // Stützen: Maserung senkrecht
+const balkenLaengs = BALKEN.clone(); balkenLaengs.center.set(.5, .5); balkenLaengs.rotation = Math.PI / 2; balkenLaengs.needsUpdate = true;
+MAT.holzLaengs = new THREE.MeshLambertMaterial({ map: balkenLaengs });           // liegender Balken
+MAT.vertaefelungDunkel = new THREE.MeshLambertMaterial({ color: 0x5a3520 });   // dunkle Holzvertäfelung (Bestand Vorraum)
+
+// Warnschild "Gefährliche elektrische Spannung": gelbes Dreieck, schwarzer Rand, Blitz
+function warnschildTextur() {
+  const N = 256, c = document.createElement('canvas'); c.width = c.height = N;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#e4e4e1'; ctx.fillRect(0, 0, N, N);
+  ctx.beginPath(); ctx.moveTo(N / 2, 18); ctx.lineTo(N - 14, N - 26); ctx.lineTo(14, N - 26); ctx.closePath();
+  ctx.fillStyle = '#f2c200'; ctx.fill(); ctx.lineJoin = 'round'; ctx.lineWidth = 16; ctx.strokeStyle = '#111'; ctx.stroke();
+  ctx.beginPath();
+  [[140, 70], [92, 150], [124, 150], [104, 210], [168, 120], [134, 120], [152, 70]].forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+  ctx.closePath(); ctx.fillStyle = '#111'; ctx.fill();
+  return canvasTextur(c);
+}
+const WARNSCHILD = warnschildTextur();
+
+// Muuto Strand: Kokon aus feinem, kreuz und quer laufendem Fasergeflecht, leuchtet warm
+function strandTextur() {
+  const N = 512, c = document.createElement('canvas'); c.width = c.height = N;
+  const ctx = c.getContext('2d'), zufall = zufallsquelle(5);
+  ctx.fillStyle = '#f7f2e7'; ctx.fillRect(0, 0, N, N);
+  for (let k = 0; k < 260; k++) {
+    ctx.strokeStyle = `rgba(190,175,150,${0.25 + zufall() * 0.4})`; ctx.lineWidth = 0.8 + zufall() * 1.4;
+    const y0 = zufall() * N, steig = (zufall() - .5) * 0.9, amp = 4 + zufall() * 18, per = 40 + zufall() * 80;
+    ctx.beginPath();
+    for (let x = -10; x <= N + 10; x += 6) ctx.lineTo(x, y0 + steig * x + Math.sin(x / per) * amp);
+    ctx.stroke();
+  }
+  return canvasTextur(c);
+}
+const STRAND = strandTextur();
+
+// Textilien fürs Schlafzimmer (graustufig, werden mit der Möbelfarbe eingefärbt)
+function stoffTextur(art) {
+  const N = 256, c = document.createElement('canvas'); c.width = c.height = N;
+  const ctx = c.getContext('2d'), zufall = zufallsquelle(art.length * 97 + 3);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, N, N);
+  if (art === 'teppich') {            // Berber: Schlingen-Raster, Rautenmuster, Melange
+    for (let i = 0; i < 9000; i++) { const g = 200 + zufall() * 55 | 0; ctx.fillStyle = `rgb(${g},${g},${g})`; ctx.fillRect(zufall() * N, zufall() * N, 2, 2); }
+    ctx.strokeStyle = 'rgba(90,80,70,0.35)'; ctx.lineWidth = 3;
+    for (let k = -N; k < 2 * N; k += 32) {
+      ctx.beginPath(); ctx.moveTo(k, 0); ctx.lineTo(k + N, N); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(k + N, 0); ctx.lineTo(k, N); ctx.stroke();
+    }
+    for (let y = 0; y < N; y += 4) { ctx.fillStyle = 'rgba(0,0,0,0.05)'; ctx.fillRect(0, y, N, 1); }
+  } else if (art === 'leinen' || art === 'papier') {   // feine Leinwandbindung mit Slubs
+    for (let y = 0; y < N; y += 2) { ctx.fillStyle = `rgba(0,0,0,${0.03 + zufall() * 0.04})`; ctx.fillRect(0, y, N, 1); }
+    for (let x = 0; x < N; x += 2) { ctx.fillStyle = `rgba(0,0,0,${0.02 + zufall() * 0.04})`; ctx.fillRect(x, 0, 1, N); }
+    for (let i = 0; i < 80; i++) { ctx.fillStyle = 'rgba(0,0,0,0.06)'; ctx.fillRect(zufall() * N, zufall() * N, 6 + zufall() * 18, 1); }
+    if (art === 'papier') for (let i = 0; i < 30; i++) {   // Knitterfalten
+      ctx.strokeStyle = `rgba(0,0,0,${0.05 + zufall() * 0.08})`; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(zufall() * N, zufall() * N); ctx.lineTo(zufall() * N, zufall() * N); ctx.stroke();
+    }
+  } else if (art === 'strick') {      // Zopf-/Rippenstrick
+    for (let x = 0; x < N; x += 16) {
+      const gr = ctx.createLinearGradient(x, 0, x + 16, 0);
+      gr.addColorStop(0, 'rgba(0,0,0,0.25)'); gr.addColorStop(0.5, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,0.25)');
+      ctx.fillStyle = gr; ctx.fillRect(x, 0, 16, N);
+      for (let y = 0; y < N; y += 10) { ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.beginPath(); ctx.moveTo(x + 2, y); ctx.lineTo(x + 8, y + 6); ctx.lineTo(x + 14, y); ctx.stroke(); }
+    }
+  } else if (art === 'polster') {     // Velours mit senkrechten Steppkanälen
+    for (let i = 0; i < 6000; i++) { ctx.fillStyle = `rgba(0,0,0,${zufall() * 0.06})`; ctx.fillRect(zufall() * N, zufall() * N, 1, 1); }
+    for (let x = 0; x < N; x += 64) {
+      const gr = ctx.createLinearGradient(x, 0, x + 64, 0);
+      gr.addColorStop(0, 'rgba(0,0,0,0.35)'); gr.addColorStop(0.15, 'rgba(0,0,0,0.05)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.15)');
+      gr.addColorStop(0.85, 'rgba(0,0,0,0.05)'); gr.addColorStop(1, 'rgba(0,0,0,0.35)');
+      ctx.fillStyle = gr; ctx.fillRect(x, 0, 64, N);
+    }
+  }
+  return canvasTextur(c);
+}
+const STOFFE = { teppich: [stoffTextur('teppich'), 60], leinen: [stoffTextur('leinen'), 25], strick: [stoffTextur('strick'), 30],
+                 polster: [stoffTextur('polster'), 50], papier: [stoffTextur('papier'), 40] };
+
+// Glasbaustein 19 x 19 cm: hell, gewellte Struktur, helle Mörtelfuge
+function glasbausteinTextur() {
+  const N = 128, c = document.createElement('canvas'); c.width = c.height = N;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#e8eef0'; ctx.fillRect(0, 0, N, N);
+  const gr = ctx.createRadialGradient(N / 2, N / 2, 4, N / 2, N / 2, N * 0.6);
+  gr.addColorStop(0, '#f4fbff'); gr.addColorStop(1, '#a9cde0');
+  ctx.fillStyle = gr; ctx.fillRect(8, 8, N - 16, N - 16);
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 2;
+  for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.arc(N / 2, N / 2, 8 + i * 9, 0, Math.PI * 2); ctx.stroke(); }
+  return canvasTextur(c);
+}
+const GLASBAUSTEIN = glasbausteinTextur();
+// Materialien für Möbelteile (data-material); Textur wird auf die Teilgröße gekachelt
+let farbeAktuell = '#ffffff';   // Grundfarbe des gerade gebauten Möbelteils (zum Einfärben der Stofftexturen)
+function moebelMaterial(name, r, hoehe, geo, mitte) {
+  if (STOFFE[name]) {
+    const [tex, groesse] = STOFFE[name];
+    weltUV(geo, mitte, groesse);
+    const m = new THREE.MeshLambertMaterial({ map: tex, color: farbeAktuell });
+    if (name === 'papier') { m.emissive = new THREE.Color(0xfff0d8); m.emissiveIntensity = 0.45; }
+    return m;
+  }
+  if (name === 'warnschild-blitz') return new THREE.MeshLambertMaterial({ map: WARNSCHILD });
+  if (name === 'strand') {
+    const tex = STRAND.clone(); tex.needsUpdate = true; tex.repeat.set(3, 2);
+    return new THREE.MeshLambertMaterial({ map: tex, emissive: 0xfff1d6, emissiveIntensity: 0.35, side: THREE.DoubleSide });
+  }
+  if (name === 'naturstein') {
+    weltUV(geo, mitte, 100);
+    return new THREE.MeshLambertMaterial({ map: NATURSTEIN.map, bumpMap: NATURSTEIN.bump, bumpScale: 4 });
+  }
+  if (BELAG[name]?.groesse) {   // Fliesen auch an Wänden/Vorwänden: Kachel auf Länge x Höhe
+    const tex = BELAG[name].map.clone();
+    tex.needsUpdate = true;
+    tex.repeat.set(Math.max(r.w, r.h) / BELAG[name].groesse, hoehe / BELAG[name].groesse);
+    return new THREE.MeshLambertMaterial({ map: tex });
+  }
+  if (name !== 'eiche-rustikal') return null;
+  const t = HOLZPLATTE[r.w >= r.h ? 'x' : 'z'];
+  const tex = t.tex.clone();
+  tex.needsUpdate = true;
+  tex.repeat.set(r.w / t.sx, r.h / t.sz);
+  return new THREE.MeshLambertMaterial({ map: tex });
+}
+
+// Gewählte Variante je Raum (data-raum -> data-variante, '' = keine Möbel); beim Laden der Seite gilt die Standardvariante
+const auswahl = {};
+
+let raumListe = [];      // [[raum, {titel, varianten, gewaehlt}], ...] in Anzeigereihenfolge
+let aktiverRaum = 0;    // für Tastatur: 1–3 wählt den Raum, ←/→ blättert
+const sortiert = r => [...r.varianten].sort((a, b) => a.titel.localeCompare(b.titel, 'de'));
+function varianteWaehlen(raum, id) {
+  auswahl[raum] = id;
+  params.delete(raum);
+  laden(true);
+}
+function blaettern(index, richtung) {
+  const [raum, r] = raumListe[index] || [];
+  if (!raum) return;
+  const liste = sortiert(r), i = liste.findIndex(v => v.id === r.gewaehlt);
+  varianteWaehlen(raum, liste[(i + richtung + liste.length) % liste.length].id);
+}
+function variantenAnzeigen(raeume) {
+  raumListe = [...raeume];
+  const box = document.getElementById('varianten');
+  box.innerHTML = '';
+  raumListe.forEach(([raum, r], index) => {
+    const liste = sortiert(r), akt = liste.find(v => v.id === r.gewaehlt);
+    const [buchstabe, ...rest] = akt ? akt.titel.split(' · ') : ['–', 'keine Möbel'];
+    const zeile = document.createElement('div');
+    zeile.className = 'zeile' + (index === aktiverRaum ? ' aktiv' : '');
+    zeile.innerHTML = `<span class="titel"></span><span class="blaettern">
+      <button aria-label="vorherige Variante">‹</button><span class="name"><b></b><span></span><select></select></span><button aria-label="nächste Variante">›</button></span>`;
+    zeile.querySelector('.titel').textContent = r.titel;
+    zeile.querySelector('.name b').textContent = buchstabe;
+    zeile.querySelector('.name span').textContent = rest.join(' · ');
+    zeile.querySelector('.name').title = akt ? akt.titel : 'keine Möbel';
+    const sel = zeile.querySelector('select');
+    for (const v of [...liste, { id: '', titel: '– keine Möbel –' }]) sel.add(new Option(v.titel, v.id));
+    sel.value = r.gewaehlt;
+    sel.onchange = () => varianteWaehlen(raum, sel.value);
+    const [zurueck, vor] = zeile.querySelectorAll('.blaettern > button');
+    zurueck.onclick = () => { aktiverRaum = index; blaettern(index, -1); };
+    vor.onclick = () => { aktiverRaum = index; blaettern(index, +1); };
+    box.appendChild(zeile);
+  });
+}
+addEventListener('keydown', e => {
+  if (modus !== 'uebersicht' || e.target.closest?.('select, input')) return;
+  if (/^Digit[1-9]$/.test(e.code) && raumListe.length >= +e.code.slice(5)) {
+    aktiverRaum = +e.code.slice(5) - 1;
+    document.querySelectorAll('#varianten .zeile').forEach((z, i) => z.classList.toggle('aktiv', i === aktiverRaum));
+  }
+  if (e.code === 'ArrowLeft') blaettern(aktiverRaum, -1);
+  if (e.code === 'ArrowRight') blaettern(aktiverRaum, +1);
+});
+
+let modell = null;      // aktuelle Gruppe
+let deckeMesh = null;
+let svgText = '';
+
+const num = (el, a, d = 0) => { const v = el.getAttribute(a); return v === null ? d : parseFloat(v); };
+const rectOf = el => ({ x: num(el, 'x'), y: num(el, 'y'), w: num(el, 'width'), h: num(el, 'height') });
+const schneiden = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+function imPolygon(px, py, pts) {
+  let innen = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [xi, yi] = pts[i], [xj, yj] = pts[j];
+    if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) innen = !innen;
+  }
+  return innen;
+}
+
+// Prisma über Rechteck (Grundriss), Unterkante fest, Oberkante = Funktion der Position (für Schrägen).
+function prisma(r, unten, obenFn, mat) {
+  const sx = Math.max(1, Math.ceil(r.w / 10)), sz = Math.max(1, Math.ceil(r.h / 10));
+  const g = new THREE.BoxGeometry(r.w, 1, r.h, sx, 1, sz);
+  g.translate(r.x + r.w / 2, 0.5, r.y + r.h / 2);
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), z = p.getZ(i);
+    p.setY(i, p.getY(i) > 0.5 ? Math.max(unten, obenFn(x, z)) : unten);
+  }
+  g.computeVertexNormals();
+  weltUV(g, { x: 0, y: 0, z: 0 }, 100);
+  return new THREE.Mesh(g, mat);
+}
+const quader = (x, y, z, w, h, d, mat) => {      // einfacher Quader: Ecke (x, y, z), Maße w (x) · h (Höhe) · d (z)
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(x + w / 2, z + h / 2, y + d / 2);
+  return m;
+};
+
+function textFlaeche(text, x, z, groesse) {
+  const c = document.createElement('canvas');
+  const ctx = c.getContext('2d');
+  ctx.font = 'bold 64px sans-serif';
+  c.width = Math.ceil(ctx.measureText(text).width) + 20; c.height = 84;
+  ctx.font = 'bold 64px sans-serif';
+  ctx.fillStyle = 'rgba(60,60,60,0.75)';
+  ctx.fillText(text, 10, 64);
+  const tex = new THREE.CanvasTexture(c);
+  const h = groesse, w = h * c.width / c.height;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
+  m.rotation.x = -Math.PI / 2;
+  m.position.set(x, 1.5, z);
+  return m;
+}
+
+function bauen(svg) {
+  const doc = new DOMParser().parseFromString(svg, 'image/svg+xml');
+  const $ = s => doc.querySelector(s), $$ = s => [...doc.querySelectorAll(s)];
+  const m3 = $('#modell-3d');
+  const P = {
+    decke: num(m3, 'data-deckenhoehe', 240), knie: num(m3, 'data-kniestock', 100),
+    neigung: num(m3, 'data-dachneigung', 45), traufe: num(m3, 'data-traufe-y', 742),
+    traufeHinten: m3.hasAttribute('data-traufe-hinten-y') ? num(m3, 'data-traufe-hinten-y') : null,
+    knieHinten: num(m3, 'data-kniestock-hinten', num(m3, 'data-kniestock', 100)),
+    traufeHintenAbX: num(m3, 'data-traufe-hinten-ab-x', -Infinity),   // links davon (Treppenhaus-Anbau) keine hintere Schräge
+    bruestung: num(m3, 'data-bruestung', 90), fenster: num(m3, 'data-fensterhoehe', 120), tuer: num(m3, 'data-tuerhoehe', 200),
+  };
+  document.getElementById('annahmen').innerHTML =
+    `<b>Höhen (${m3.getAttribute('data-quelle')}):</b> Decke ${P.decke} cm, Kniestock ${P.knie} cm, ` +
+    `Dachneigung ${P.neigung}°, Brüstung ${P.bruestung} cm, Fensterhöhe ${P.fenster} cm` +
+    (P.traufeHinten !== null ? `, Kniestock hinten ${P.knieHinten} cm.` : '. Rückseite ohne Schräge angenommen.');
+
+  const gaube = $('#gaube') ? rectOf($('#gaube')) : null;
+  const ecke = $('#niedrig-vorraum-ecke') ? rectOf($('#niedrig-vorraum-ecke')) : null;
+  const tan = Math.tan(P.neigung * Math.PI / 180);
+
+  // Lichte Höhe an einer Stelle des Grundrisses
+  const gaubeHinten = $('#gaube-hinten');
+  const gh = gaubeHinten ? { ...rectOf(gaubeHinten), hoehe: num(gaubeHinten, 'data-hoehe', 225) } : null;
+  const hoehe = (x, y) => {
+    let h = P.knie + (P.traufe - y) * tan;
+    // hintere Dachseite: Schräge von der Rückwand (traufeHinten) aus; nicht über dem Treppenhaus-Anbau (y < Traufe)
+    if (P.traufeHinten !== null && y >= P.traufeHinten && x >= P.traufeHintenAbX) {
+      let hh = P.knieHinten + (y - P.traufeHinten) * tan;
+      if (gh && x >= gh.x && x <= gh.x + gh.w && y <= gh.y + gh.h) hh = Math.max(hh, gh.hoehe);   // Gaube hebt die Decke
+      h = Math.min(h, hh);
+    }
+    if (gaube && x >= gaube.x && x <= gaube.x + gaube.w && y >= gaube.y) h = P.decke;
+    if (ecke && x >= ecke.x && x <= ecke.x + ecke.w && y >= ecke.y && y <= ecke.y + ecke.h)
+      h = Math.min(h, P.knie + (y - ecke.y) / ecke.h * (P.decke - P.knie));
+    return Math.min(P.decke, h);
+  };
+
+  const g = new THREE.Group();
+  const fenster = $$('#bestand rect.fenster').map(rectOf);
+  const glas = $$('#bestand rect.glasbaustein').map(el => ({ ...rectOf(el), z: num(el, 'data-z', 30), hz: num(el, 'data-hoehe', 90) }));
+
+  // Wände, an Fenstern aufgetrennt
+  for (const el of $$('#bestand rect.wand, #bestand rect.wand-leicht')) {
+    const r = rectOf(el);
+    const ofl = el.getAttribute('data-oberflaeche');
+    const mat = ofl === 'vertaefelung-dunkel' ? MAT.vertaefelungDunkel : el.classList.contains('wand') ? MAT.wand : MAT.leicht;
+    const laengsX = r.w >= r.h;
+    let stuecke = [[laengsX ? r.x : r.y, laengsX ? r.x + r.w : r.y + r.h]];
+    for (const f of [...fenster, ...glas].filter(f => schneiden(f, r))) {
+      const a = laengsX ? f.x : f.y, b = laengsX ? f.x + f.w : f.y + f.h;
+      stuecke = stuecke.flatMap(([s, e]) => [[s, Math.min(e, a)], [Math.max(s, b), e]].filter(([s2, e2]) => e2 - s2 > 0.5));
+    }
+    for (const [s, e] of stuecke) {
+      const t = laengsX ? { x: s, y: r.y, w: e - s, h: r.h } : { x: r.x, y: s, w: r.w, h: e - s };
+      g.add(prisma(t, 0, hoehe, mat));
+      // Sockelleisten (7 cm) auf beiden Längsseiten
+      if (laengsX) { g.add(quader(t.x, t.y - 1.5, 0, t.w, 7, 1.5, MAT.sockelleiste)); g.add(quader(t.x, t.y + t.h, 0, t.w, 7, 1.5, MAT.sockelleiste)); }
+      else { g.add(quader(t.x - 1.5, t.y, 0, 1.5, 7, t.h, MAT.sockelleiste)); g.add(quader(t.x + t.w, t.y, 0, 1.5, 7, t.h, MAT.sockelleiste)); }
+    }
+  }
+  const waende = $$('#bestand rect.wand, #bestand rect.wand-leicht').map(rectOf);
+  // Kniestock-Linien als niedrige Wände
+  for (const el of $$('#bestand line.kniestock')) {
+    const x1 = num(el, 'x1'), y1 = num(el, 'y1'), x2 = num(el, 'x2'), y2 = num(el, 'y2');
+    const r = y1 === y2 ? { x: Math.min(x1, x2), y: y1 - 7, w: Math.abs(x2 - x1), h: 15 }
+                        : { x: x1 - 7, y: Math.min(y1, y2), w: 15, h: Math.abs(y2 - y1) };
+    g.add(prisma(r, 0, hoehe, MAT.wand));
+  }
+  // Fenster: Brüstung, Sturz, Glas, Rahmen, Mittelpfosten, innere Fensterbank
+  const pts0 = $('#grundflaeche').getAttribute('points').trim().split(/\s+/).map(p => p.split(',').map(Number));
+  for (const el of $$('#bestand rect.fenster')) {
+    const f = rectOf(el), lx = f.w >= f.h;
+    const zweifluegelig = el.closest('[data-typ]')?.getAttribute('data-typ') === '2-fluegelig';
+    g.add(prisma(f, 0, () => P.bruestung, MAT.wand));
+    g.add(prisma(f, P.bruestung + P.fenster, hoehe, MAT.wand));
+    const z0 = P.bruestung, z1 = P.bruestung + P.fenster, R6 = 6;
+    const lang = lx ? f.w : f.h, mitte = lx ? f.y + f.h / 2 : f.x + f.w / 2, start = lx ? f.x : f.y;
+    const teil = (a, l, za, hz) => lx ? quader(start + a, mitte - 3, za, l, hz, 6, MAT.rahmen) : quader(mitte - 3, start + a, za, 6, hz, l, MAT.rahmen);
+    g.add(teil(0, R6, z0, P.fenster)); g.add(teil(lang - R6, R6, z0, P.fenster));
+    g.add(teil(0, lang, z0, R6)); g.add(teil(0, lang, z1 - R6, R6));
+    if (zweifluegelig) g.add(teil(lang / 2 - 4, 8, z0, P.fenster));
+    const glas = new THREE.Mesh(lx ? new THREE.BoxGeometry(lang - 2 * R6, P.fenster - 2 * R6, 1)
+                                   : new THREE.BoxGeometry(1, P.fenster - 2 * R6, lang - 2 * R6), MAT.glas);
+    glas.position.set(f.x + f.w / 2, (z0 + z1) / 2, f.y + f.h / 2);
+    g.add(glas);
+    // innere Fensterbank: auf der Seite, die in der Grundfläche liegt
+    const innenPlus = lx ? imPolygon(f.x + f.w / 2, f.y + f.h + 20, pts0) : imPolygon(f.x + f.w + 20, f.y + f.h / 2, pts0);
+    const kante = lx ? (innenPlus ? f.y + f.h : f.y) : (innenPlus ? f.x + f.w : f.x);
+    const b0 = innenPlus ? mitte : kante - 9, b1 = innenPlus ? kante + 9 : mitte;     // ragt ~5 cm über die Wand
+    if (lx) g.add(quader(f.x - 3, b0, z0 - 3, f.w + 6, 3, b1 - b0, MAT.rahmen));
+    else g.add(quader(b0, f.y - 3, z0 - 3, b1 - b0, 3, f.h + 6, MAT.rahmen));
+  }
+
+  // Glasbausteinfelder: Mauer darunter und darüber, dazwischen Glassteine mit Fugenraster
+  for (const b of glas) {
+    g.add(prisma(b, 0, () => b.z, MAT.leicht));
+    g.add(prisma(b, b.z + b.hz, hoehe, MAT.leicht));
+    const tex = GLASBAUSTEIN.clone(); tex.needsUpdate = true;
+    tex.repeat.set(Math.max(b.w, b.h) / 19, b.hz / 19);
+    const lx = b.w >= b.h;
+    g.add(quader(b.x, b.y + (lx ? 2 : 0), b.z, lx ? b.w : b.w, b.hz, lx ? b.h - 4 : b.h,
+      new THREE.MeshLambertMaterial({ map: tex, emissive: 0xcfe6f2, emissiveIntensity: 0.35, transparent: true, opacity: 0.92 })));
+  }
+
+  // Türen: Türblatt in der gezeichneten Stellung, Drücker, Sturz über der Öffnung, Lichtschalter neben der Tür
+  for (const el of $$('#bestand path.tuer')) {
+    const d = el.getAttribute('d');
+    const m = d.match(/M\s*([\d.]+)[ ,]([\d.]+)\s*([hv])\s*(-?[\d.]+)/), a = d.match(/A[^A]*?([\d.]+)[ ,]([\d.]+)\s*$/);
+    if (!m || !a) continue;
+    const hx = +m[1], hy = +m[2], L = Math.abs(+m[4]), dx = m[3] === 'h' ? Math.sign(+m[4]) : 0, dy = m[3] === 'v' ? Math.sign(+m[4]) : 0;
+    const ex = +a[1], ey = +a[2];
+    // Türblatt (4 cm) entlang der Blattlinie
+    const ox = Math.min(hx, hx + dx * L), oy = Math.min(hy, hy + dy * L);
+    g.add(dx ? quader(ox, hy - 2, 0, L, P.tuer, 4, MAT.tuer) : quader(hx - 2, oy, 0, 4, P.tuer, L, MAT.tuer));
+    const gx = hx + dx * (L - 7), gy = hy + dy * (L - 7);       // Drücker beidseitig
+    g.add(dx ? quader(gx - 6, hy - 8, 103, 12, 2, 16, MAT.chrom) : quader(hx - 8, gy - 6, 103, 16, 2, 12, MAT.chrom));
+    // Öffnung von Angel (hx, hy) bis Arc-Ende (ex, ey); Sturz über die Wanddicke
+    const quer = Math.abs(ex - hx) > Math.abs(ey - hy), o0 = quer ? Math.min(hx, ex) : Math.min(hy, ey), o1 = quer ? Math.max(hx, ex) : Math.max(hy, ey);
+    const wand = waende.find(w => quer
+      ? w.w >= w.h && hy >= w.y - 1 && hy <= w.y + w.h + 1 && (Math.abs(w.x + w.w - o0) < 2 || Math.abs(w.x - o1) < 2)
+      : w.h > w.w && hx >= w.x - 1 && hx <= w.x + w.w + 1 && (Math.abs(w.y + w.h - o0) < 2 || Math.abs(w.y - o1) < 2));
+    if (wand) {
+      const t = quer ? { x: o0, y: wand.y, w: o1 - o0, h: wand.h } : { x: wand.x, y: o0, w: wand.w, h: o1 - o0 };
+      g.add(prisma(t, P.tuer, hoehe, MAT.wand));
+      // Zarge: schmale weiße Rahmenleisten um die Öffnung auf der Seite, in die die Tür aufgeht
+      const seite = quer ? (dy > 0 ? wand.y + wand.h : wand.y - 1.5) : (dx > 0 ? wand.x + wand.w : wand.x - 1.5);
+      if (quer) { g.add(quader(o0 - 6, seite, 0, 6, P.tuer + 6, 1.5, MAT.rahmen)); g.add(quader(o1, seite, 0, 6, P.tuer + 6, 1.5, MAT.rahmen)); g.add(quader(o0 - 6, seite, P.tuer, o1 - o0 + 12, 6, 1.5, MAT.rahmen)); }
+      else { g.add(quader(seite, o0 - 6, 0, 1.5, P.tuer + 6, 6, MAT.rahmen)); g.add(quader(seite, o1, 0, 1.5, P.tuer + 6, 6, MAT.rahmen)); g.add(quader(seite, o0 - 6, P.tuer, 1.5, 6, o1 - o0 + 12, MAT.rahmen)); }
+      // Lichtschalter auf der Schlossseite, 15 cm neben der Öffnung, 105 cm hoch
+      const sp = (quer ? (ex > hx ? o1 + 15 : o0 - 23) : (ey > hy ? o1 + 15 : o0 - 23));
+      if (quer) g.add(quader(sp, dy > 0 ? wand.y + wand.h : wand.y - 1, 101, 8, 8, 1, MAT.schalter));
+      else g.add(quader(dx > 0 ? wand.x + wand.w : wand.x - 1, sp, 101, 1, 8, 8, MAT.schalter));
+    }
+  }
+
+  // Boden mit Treppenloch
+  const pts = pts0;
+  const form = new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, -y)));
+  // Treppe nach unten: Loch-Polygon im Boden, Stufen als Polygone (data-n = Stufe von oben), Geländer an den offenen Lochkanten
+  const lochEl = $('#treppe polygon.loch');
+  const polyPts = el => el.getAttribute('points').trim().split(/\s+/).map(p => p.split(',').map(Number));
+  const loch = lochEl ? polyPts(lochEl) : null;
+  if (loch) {
+    form.holes.push(new THREE.Path(loch.map(([x, y]) => new THREE.Vector2(x, -y)).reverse()));
+    const steig = num($('#treppe'), 'data-steigung', 19);
+    const MAT_TRITT = new THREE.MeshLambertMaterial({ color: 0xb98a4a }), MAT_SCHWARZ = new THREE.MeshLambertMaterial({ color: 0x1f1f1f });
+    for (const el of $$('#treppe polygon.stufe')) {
+      const n = num(el, 'data-n', 1), pts = polyPts(el);
+      const sh = new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, -y)));
+      const unterbau = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: steig - 3, bevelEnabled: false }), MAT_SCHWARZ);
+      unterbau.rotation.x = -Math.PI / 2; unterbau.position.y = -n * steig - (steig - 3) + 0; g.add(unterbau);
+      const tritt = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: 3, bevelEnabled: false }), MAT_TRITT);
+      tritt.rotation.x = -Math.PI / 2; tritt.position.y = -n * steig - 3 + 3; g.add(tritt);
+    }
+    // Geländer an der Innenseite der Treppe (polyline.gelaender): Pfosten stehen auf den Stufen, Handlauf folgt der Steigung
+    const stufenPolys = $$('#treppe polygon.stufe').map(el => ({ n: num(el, 'data-n', 1), pts: polyPts(el) }));
+    const trittHoehe = (x, y) => {            // Höhe der Trittfläche unter einem Punkt am Rand (2 cm nach innen versetzt)
+      for (const [dx, dy] of [[-2, -2], [-2, 2], [2, -2], [-4, -4]]) {
+        const st = stufenPolys.find(p => imPolygon(x + dx, y + dy, p.pts));
+        if (st) return -st.n * steig;
+      }
+      return 0;
+    };
+    const stab = (a, b, d, mat) => {          // Balken zwischen zwei 3D-Punkten (x, h, y)
+      const va = new THREE.Vector3(a[0], a[1], a[2]), vb = new THREE.Vector3(b[0], b[1], b[2]);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(d, d, va.distanceTo(vb) + d), mat);
+      m.position.copy(va).add(vb).multiplyScalar(0.5);
+      m.lookAt(vb);
+      return m;
+    };
+    for (const el of $$('#treppe polyline.gelaender')) {
+      const pts = polyPts(el), h = num(el, 'data-hoehe', 90), proben = [];
+      for (let i = 1; i < pts.length; i++) {
+        const [ax, ay] = pts[i - 1], [bx, by] = pts[i], l = Math.hypot(bx - ax, by - ay), n = Math.max(2, Math.round(l / 12));
+        for (let k = i === 1 ? 0 : 1; k <= n; k++) {
+          const x = ax + (bx - ax) * k / n, y = ay + (by - ay) * k / n;
+          proben.push([x, trittHoehe(x, y), y]);
+        }
+      }
+      // Handlauf glätten (gleitender Mittelwert über ±3 Proben), damit er gleichmäßig steigt statt zu treppen
+      const glatt = proben.map((_, i) => {
+        const nb = proben.slice(Math.max(0, i - 3), i + 4);
+        return nb.reduce((s, p) => s + p[1], 0) / nb.length;
+      });
+      proben.forEach(([x, z0, y], i) => g.add(quader(x - 1.5, y - 1.5, z0, 3, glatt[i] + h - z0, 3, MAT.handlauf)));
+      for (let i = 1; i < proben.length; i++) {
+        const a = proben[i - 1], b = proben[i];
+        g.add(stab([a[0], glatt[i - 1] + h, a[2]], [b[0], glatt[i] + h, b[2]], 5, MAT.handlauf));
+      }
+    }
+  }
+  const treppe = loch ? { pts: loch } : null;
+
+  // Treppe nach oben (zur oberen Wohnung): gerade, steigt in +y; Geländer mit Handlauf auf der Ostseite bis data-gelaender-bis
+  const tro = $('#treppe-oben rect');
+  if (tro) {
+    const t = rectOf(tro), n = num(tro, 'data-stufen', 11), st = num(tro, 'data-steigung', 19), tiefe = t.h / n;
+    const MAT_STUFE = new THREE.MeshLambertMaterial({ color: 0x5b3a24 }), MAT_SETZ = new THREE.MeshLambertMaterial({ color: 0x3c2618 });
+    for (let i = 0; i < n; i++) {
+      g.add(quader(t.x, t.y + i * tiefe, i * st, t.w, st, tiefe, MAT_SETZ));
+      g.add(quader(t.x - 1, t.y + i * tiefe - 2, (i + 1) * st - 3, t.w + 2, 3, tiefe + 2, MAT_STUFE));
+    }
+    const bis = num(tro, 'data-gelaender-bis', t.y + t.h), xg = t.x + t.w;
+    for (let y = t.y; y <= bis; y += 24) {
+      const h0 = Math.floor((y - t.y) / tiefe + 1) * st;
+      g.add(quader(xg - 3, y - 2, 0, 5, h0 + 90, 5, MAT.handlauf));
+    }
+    const l = bis - t.y, hub = l / tiefe * st;
+    const hl = new THREE.Mesh(new THREE.BoxGeometry(6, 5, Math.hypot(l, hub) + 6), MAT.handlauf);
+    hl.position.set(xg - 1, st + 90 + hub / 2, t.y + l / 2);
+    hl.rotation.x = -Math.atan2(hub, l);
+    g.add(hl);
+    // vertäfelte Brüstung unter dem Handlauf (dunkles Holz)
+    for (let y = t.y; y < bis; y += tiefe) {
+      const h0 = Math.floor((y - t.y) / tiefe + 1) * st;
+      g.add(quader(xg - 1, y, h0, 2, 85, tiefe, MAT.vertaefelungDunkel));
+    }
+  }
+  const boden = new THREE.Mesh(new THREE.ShapeGeometry(form), MAT.boden);
+  boden.rotation.x = -Math.PI / 2;
+  g.add(boden);
+
+  // Bodenbeläge
+  for (const el of $$('#boden rect[data-material]')) {
+    const r = rectOf(el);
+    const mat = BELAG[el.getAttribute('data-material')];
+    if (!mat) continue;
+    const tex = mat.map.clone();
+    tex.needsUpdate = true;
+    const laengsX = el.getAttribute('data-richtung') === 'x';
+    if (mat.groesse) tex.repeat.set(r.w / mat.groesse, r.h / mat.groesse);   // Fliesen: quadratische Kachel
+    else {
+      // Dielen: Textur zeigt 8 Dielen (Breite) x 400 cm (Länge)
+      const breite = 8 * num(el, 'data-dielenbreite', 18);
+      tex.repeat.set(laengsX ? r.h / breite : r.w / breite, laengsX ? r.w / 400 : r.h / 400);
+    }
+    if (laengsX) tex.rotation = Math.PI / 2;
+    const belag = new THREE.Mesh(new THREE.PlaneGeometry(r.w, r.h),
+      new THREE.MeshLambertMaterial({ map: tex }));
+    belag.rotation.x = -Math.PI / 2;
+    belag.position.set(r.x + r.w / 2, 0.5, r.y + r.h / 2);
+    g.add(belag);
+  }
+
+  // Decke / Dachschrägen als Höhenfeld über der Grundfläche
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  const raster = 10, pos = [], farben = [];
+  // Deckenzonen aus dem Plan: <rect class="decke-zone" data-farbe=".." data-streifen="x|y"> (Streifen = Profilholz/Paneele)
+  const WEISS_DECKE = new THREE.Color(0xfafafa);
+  const deckenZonen = $$('#decken rect.decke-zone').map(el => ({ ...rectOf(el),
+    farbe: new THREE.Color(el.getAttribute('data-farbe') || '#fafafa'), streifen: el.getAttribute('data-streifen') }));
+  for (let x = x0; x < x1; x += raster) for (let y = y0; y < y1; y += raster) {
+    if (!imPolygon(x + raster / 2, y + raster / 2, pts)) continue;
+    const a = [x, hoehe(x, y), y], b = [x + raster, hoehe(x + raster, y), y],
+          c = [x + raster, hoehe(x + raster, y + raster), y + raster], d = [x, hoehe(x, y + raster), y + raster];
+    pos.push(...a, ...b, ...c, ...a, ...c, ...d);   // Normalen nach unten (Innenseite)
+    const zone = deckenZonen.find(z => x + raster / 2 >= z.x && x + raster / 2 <= z.x + z.w && y + raster / 2 >= z.y && y + raster / 2 <= z.y + z.h);
+    const f = zone ? zone.farbe : WEISS_DECKE, streifen = zone?.streifen && Math.floor((zone.streifen === 'x' ? x : y) / 10) % 2 ? 0.93 : 1;
+    for (let k = 0; k < 6; k++) farben.push(f.r * streifen, f.g * streifen, f.b * streifen);
+  }
+  const dg = new THREE.BufferGeometry();
+  dg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  dg.setAttribute('color', new THREE.Float32BufferAttribute(farben, 3));
+  dg.computeVertexNormals();
+  deckeMesh = new THREE.Mesh(dg, MAT.decke);
+  g.add(deckeMesh);
+
+  // Fachwerk (Zukunftsplan)
+  for (const el of $$('.fachwerk-stuetze')) g.add(prisma(rectOf(el), 0, hoehe, MAT.holz));   // UVs in Weltkoordinaten (prisma)
+  for (const el of $$('.fachwerk-balken')) {   // 1 cm breiter, damit er nicht mit Wandstücken flimmert
+    const r = rectOf(el);
+    g.add(prisma({ x: r.x - 1, y: r.y, w: r.w + 2, h: r.h }, P.decke - 20, hoehe, MAT.holzLaengs));
+  }
+
+  // Möbel und Elektro (Rechtecke mit data-hoehe / data-z)
+  // Varianten je Raum einsammeln und Auswahl bestimmen
+  const raeume = new Map();
+  for (const v of $$('#moebel g.variante')) {
+    const raum = v.getAttribute('data-raum'), id = v.getAttribute('data-variante');
+    if (!raeume.has(raum)) raeume.set(raum, { titel: v.getAttribute('data-raum-titel') || raum, varianten: [], standard: null });
+    const eintrag = raeume.get(raum);
+    eintrag.varianten.push({ id, titel: v.getAttribute('data-titel') || id });
+    if (v.hasAttribute('data-raum-titel')) eintrag.titel = v.getAttribute('data-raum-titel');
+    if (v.getAttribute('data-standard') === 'true') eintrag.standard = id;
+  }
+  for (const [raum, e] of raeume) {
+    const w = params.has(raum) ? params.get(raum) : auswahl[raum];   // URL ?wohnkueche=... hat Vorrang
+    e.gewaehlt = w === '' || e.varianten.some(v => v.id === w) ? w : (e.standard ?? e.varianten[0].id);
+  }
+  variantenAnzeigen(raeume);
+  const sichtbar = el => {
+    const v = el.closest('g.variante');
+    return !v || raeume.get(v.getAttribute('data-raum')).gewaehlt === v.getAttribute('data-variante');
+  };
+
+  // .nur2d = nur Darstellung im Plan; data-form="zylinder" = rundes Teil (Durchmesser = Rechteckbreite)
+  for (const el of $$('#moebel rect:not(.nur2d), #elektro rect:not(.nur2d)').filter(sichtbar)) {
+    const r = rectOf(el), z = num(el, 'data-z', 0), h = num(el, 'data-hoehe', 80);
+    const farbe = el.getAttribute('data-farbe') || el.getAttribute('fill') || '#7a8a9a';
+    const form = el.getAttribute('data-form');
+    let geo;
+    if (form === 'zylinder') geo = new THREE.CylinderGeometry(Math.min(r.w, r.h) / 2, Math.min(r.w, r.h) / 2, h, 24);
+    else if (form === 'kugel') { geo = new THREE.SphereGeometry(0.5, 40, 24); geo.scale(r.w, h, r.h); }   // Ellipsoid
+    else geo = new THREE.BoxGeometry(r.w, h, r.h);
+    const mitte = new THREE.Vector3(r.x + r.w / 2, z + h / 2, r.y + r.h / 2);
+    farbeAktuell = farbe;
+    const mat = moebelMaterial(el.getAttribute('data-material'), r, h, geo, mitte) || new THREE.MeshLambertMaterial({ color: farbe });
+    const teil = new THREE.Mesh(geo, mat);
+    teil.position.copy(mitte);
+    g.add(teil);
+  }
+
+  // Raumnamen auf dem Boden
+  for (const el of $$('#beschriftung text.raum')) {
+    g.add(textFlaeche(el.textContent.trim(), num(el, 'x'), num(el, 'y'), 32));
+  }
+
+  return g;
+}
+
+async function laden(erzwingen = false) {
+  const datei = document.getElementById('plan').value;
+  const text = await (await fetch(datei + '?t=' + Date.now())).text();
+  if (!erzwingen && text === svgText) return;
+  svgText = text;
+  if (modell) scene.remove(modell);
+  modell = bauen(text);
+  scene.add(modell);
+  deckeMesh.visible = document.getElementById('decke').checked;
+}
+
+let modus = 'uebersicht';
+function umschalterAktualisieren() {
+  document.getElementById('btn-uebersicht').classList.toggle('aktiv', modus === 'uebersicht');
+  document.getElementById('btn-gehen').classList.toggle('aktiv', modus === 'gehen');
+  const plan = document.getElementById('plan').value;
+  document.querySelectorAll('#seg-plan button').forEach(b => b.classList.toggle('aktiv', b.dataset.wert === plan));
+}
+function uebersicht() {
+  modus = 'uebersicht';
+  setTimeout(umschalterAktualisieren);
+  walk.unlock();
+  orbit.enabled = true;
+  camera.position.set(445, 950, 1250);
+  orbit.target.set(445, 0, 250);
+  orbit.update();
+  document.getElementById('decke').checked = false;
+  if (deckeMesh) deckeMesh.visible = false;
+  document.getElementById('fadenkreuz').style.display = 'none';
+  joystick.style.display = 'none';
+}
+function gehen(x = 200, z = 130, blick = -Math.PI / 2) {   // Start: hinter der Wohnungstür, Blick in den Vorraum
+  modus = 'gehen';
+  setTimeout(umschalterAktualisieren);
+  orbit.enabled = false;
+  camera.position.set(x, AUGENHOEHE, z);
+  camera.rotation.set(0, blick, 0, 'YXZ');
+  document.getElementById('decke').checked = true;
+  if (deckeMesh) deckeMesh.visible = true;
+  document.getElementById('fadenkreuz').style.display = 'block';
+  if (touchGeraet) joystick.style.display = 'block';
+}
+
+// Touch-Steuerung fürs Durchgehen: Joystick = gehen, Wischen übers Bild = umschauen (Pointer Lock gibt es am Handy nicht)
+const touchGeraet = matchMedia('(pointer: coarse)').matches;   // Handy/Tablet (primärer Zeiger ist ein Finger)
+const joystick = document.getElementById('joystick'), knopf = document.getElementById('joystick-knopf');
+const stick = { id: null, x: 0, y: 0 };
+joystick.addEventListener('pointerdown', e => { stick.id = e.pointerId; joystick.setPointerCapture(e.pointerId); stickSetzen(e); });
+joystick.addEventListener('pointermove', e => { if (e.pointerId === stick.id) stickSetzen(e); });
+const stickLos = e => {
+  if (e.pointerId !== stick.id) return;
+  stick.id = null; stick.x = stick.y = 0;
+  knopf.style.transform = '';
+};
+joystick.addEventListener('pointerup', stickLos);
+joystick.addEventListener('pointercancel', stickLos);
+function stickSetzen(e) {
+  const b = joystick.getBoundingClientRect(), r = b.width / 2;
+  let dx = e.clientX - (b.left + r), dy = e.clientY - (b.top + r);
+  const l = Math.hypot(dx, dy), max = r - 10;
+  if (l > max) { dx *= max / l; dy *= max / l; }
+  stick.x = dx / max; stick.y = dy / max;
+  knopf.style.transform = `translate(${dx}px, ${dy}px)`;
+}
+const blick = { id: null, x: 0, y: 0 };
+renderer.domElement.addEventListener('pointerdown', e => {
+  if (modus !== 'gehen' || e.pointerType === 'mouse') return;
+  blick.id = e.pointerId; blick.x = e.clientX; blick.y = e.clientY;
+});
+renderer.domElement.addEventListener('pointermove', e => {
+  if (e.pointerId !== blick.id) return;
+  camera.rotation.y += (e.clientX - blick.x) * 0.005;
+  camera.rotation.x = Math.max(-1.4, Math.min(1.4, camera.rotation.x + (e.clientY - blick.y) * 0.005));
+  blick.x = e.clientX; blick.y = e.clientY;
+});
+const blickLos = e => { if (e.pointerId === blick.id) blick.id = null; };
+renderer.domElement.addEventListener('pointerup', blickLos);
+renderer.domElement.addEventListener('pointercancel', blickLos);
+
+// Einstellungen ein-/ausblenden; auf schmalen Bildschirmen startet das Panel eingeklappt
+const panel = document.getElementById('panel'), umschalten = document.getElementById('umschalten');
+const panelZu = zu => {
+  panel.classList.toggle('zu', zu);
+  umschalten.textContent = zu ? 'Einstellungen' : 'Ausblenden';
+  umschalten.setAttribute('aria-expanded', String(!zu));
+};
+umschalten.onclick = () => panelZu(!panel.classList.contains('zu'));
+panelZu(matchMedia('(max-width: 700px)').matches);
+
+document.getElementById('btn-uebersicht').onclick = uebersicht;
+document.getElementById('btn-gehen').onclick = () => {
+  gehen();
+  if (touchGeraet) { if (matchMedia('(max-width: 700px)').matches) panelZu(true); }
+  else walk.lock();
+};
+renderer.domElement.addEventListener('click', e => {
+  if (modus === 'gehen' && !walk.isLocked && !touchGeraet) walk.lock();
+});
+document.querySelectorAll('#seg-plan button').forEach(b => b.onclick = () => {
+  document.getElementById('plan').value = b.dataset.wert;
+  umschalterAktualisieren();
+  laden(true);
+});
+// Hilfe / Info ein- und ausklappen; Hilfe beim allerersten Besuch einmal offen zeigen
+const bereichUmschalten = (knopf, bereich, offen) => {
+  bereich.hidden = !offen;
+  knopf.classList.toggle('aktiv', offen);
+  knopf.setAttribute('aria-expanded', String(offen));
+};
+const hilfe = document.getElementById('hilfe'), info = document.getElementById('info');
+const btnHilfe = document.getElementById('btn-hilfe'), btnInfo = document.getElementById('btn-info');
+btnHilfe.onclick = () => { if (panel.classList.contains('zu')) panelZu(false); bereichUmschalten(btnHilfe, hilfe, hilfe.hidden); };
+btnInfo.onclick = () => { if (panel.classList.contains('zu')) panelZu(false); bereichUmschalten(btnInfo, info, info.hidden); };
+try {
+  if (!localStorage.getItem('hilfe-gesehen')) { bereichUmschalten(btnHilfe, hilfe, true); localStorage.setItem('hilfe-gesehen', '1'); }
+} catch { }
+document.getElementById('decke').onchange = e => { if (deckeMesh) deckeMesh.visible = e.target.checked; };
+
+const tasten = {};
+addEventListener('keydown', e => { tasten[e.code] = true; });
+addEventListener('keyup', e => { tasten[e.code] = false; });
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+const uhr = new THREE.Clock();
+function schleife() {
+  const dt = Math.min(uhr.getDelta(), 0.1);
+  if (modus === 'gehen') {
+    const v = (tasten.ShiftLeft || tasten.ShiftRight ? 300 : 130) * dt;
+    if (tasten.KeyW || tasten.ArrowUp) walk.moveForward(v);
+    if (tasten.KeyS || tasten.ArrowDown) walk.moveForward(-v);
+    if (tasten.KeyA || tasten.ArrowLeft) walk.moveRight(-v);
+    if (tasten.KeyD || tasten.ArrowRight) walk.moveRight(v);
+    if (stick.x || stick.y) {                          // Joystick: nach oben = vorwärts
+      walk.moveForward(-stick.y * 130 * dt);
+      walk.moveRight(stick.x * 130 * dt);
+    }
+    camera.position.y = AUGENHOEHE;
+  } else {
+    orbit.update();
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(schleife);
+}
+
+// URL-Parameter: ?plan=future&ansicht=gehen&x=..&y=..&blick=.. (Blick in Grad, 0 = Richtung Rückwand)
+if (params.get('plan') === 'today') document.getElementById('plan').value = 'floor_plan_today.svg';   // Standard: Nach Renovierung
+await laden(true);
+if (params.get('ansicht') === 'gehen') {
+  gehen(+(params.get('x') ?? 335), +(params.get('y') ?? 130), (+(params.get('blick') ?? 0)) * Math.PI / 180);
+  if (params.has('neigung')) camera.rotation.x = +params.get('neigung') * Math.PI / 180;   // Blick nach oben/unten in Grad
+} else uebersicht();
+setInterval(() => laden().catch(() => {}), 2000);
+schleife();
+</script>
+</body>
+</html>
